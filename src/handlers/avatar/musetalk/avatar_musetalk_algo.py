@@ -424,6 +424,35 @@ class MuseAvatarV15:
         with open(self.masks_path, 'wb') as f:
             pickle.dump(self.mask_list_cycle, f)
 
+    def acc_get_image_blending(self, image, face, face_box, mask_array, crop_box):
+        # 1. BGR2RGB
+        body_cpy = image[:, :, ::-1].copy()
+        face_cpy = face[:, :, ::-1].copy()
+        x, y, x1, y1 = face_box
+        x_s, y_s, x_e, y_e = crop_box
+    
+        # 2.crop face_Large
+        face_large1 = body_cpy[y_s:y_e, x_s:x_e].copy()
+    
+        # 3. mask
+        mask_f = (mask_array / 255.0).astype(np.float32)
+        mask3 = np.stack([mask_f]*3, axis=2)
+    
+        # 4. past face into face_large
+        face_large1[y-y_s:y1-y_s, x-x_s:x1-x_s] = face_cpy
+    
+        # 5.merge face_large with body_crop
+        body_crop = body_cpy[y_s:y_e, x_s:x_e].copy()
+        blended = (face_large1 * mask3 + body_crop * (1 - mask3)).astype(np.uint8)
+    
+        # 6. past back
+        out = body_cpy.copy()
+        out[y_s:y_e, x_s:x_e] = blended
+        out = out[:,:,::-1]
+    
+        # 7.return[H, W, 3],RGB
+        return out
+
     def res2combined(self, res_frame, idx):
         """Blend the generated frame with the original frame
         Args:
@@ -455,7 +484,8 @@ class MuseAvatarV15:
         mask_crop_box = self.mask_coords_list_cycle[idx % len(self.mask_coords_list_cycle)]
         t3 = time.time()
         # Blend the generated facial expression with the original frame
-        combine_frame = get_image_blending(ori_frame, res_frame, bbox, mask, mask_crop_box)
+        # combine_frame = get_image_blending(ori_frame, res_frame, bbox, mask, mask_crop_box)
+        combine_frame = self.acc_get_image_blending(ori_frame, res_frame, bbox, mask, mask_crop_box)
         t4 = time.time()
         if self.debug:
             logger.info(
