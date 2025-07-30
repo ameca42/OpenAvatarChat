@@ -38,3 +38,10 @@ dump_avatar_audio.pcm
 exp/
 uv.lock
 logs/
+# 敏感的配置文件
+.env
+config/
+
+# 脚本和文档 (如果确认它们都不应在仓库中)
+*.sh
+*.md
